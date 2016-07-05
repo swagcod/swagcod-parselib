@@ -1,0 +1,12 @@
+This exists because I'm tired of there being no good parser combinator
+library. It implements only what I need specifically. Its made for
+(the guy who pretends to be) SwagCoD to use, not for you to use.
+
+The problem with all other libraries is that either they aren't combinators,
+and are thus way overkill for small projects which don't need to be fast,
+or the author has somehow convinced themself that they are writing in Haskell
+and decides that they must use monads, when the language doesn't have do-notation.
+
+This uses monad-flavored combinators, but no monads. There is no .bind(). Parsers
+are written as ordinary python functions, but use the @parser decorator to
+minimally change them.
