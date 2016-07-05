@@ -3,10 +3,10 @@ from swagcod.parselib import *
 import pytest
 
 @parser
-def two_char_parser(state, input):
-    _, state, input = accept_specific('h')(state, input)
-    _, state, input = accept_specific('h')(state, input)
-    return 'hh', state, input
+def two_char_parser(input):
+    _, input = accept_specific('h')(input)
+    _, input = accept_specific('h')(input)
+    return 'hh', input
 
 def test_parse_all():
     with pytest.raises(ParseConsumeError):

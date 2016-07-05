@@ -20,9 +20,9 @@ class ParseConsumeError(ParseError):
 # it looks like parser(args)(input). Two layers of functions for extra fun.
 def parser(func):
     def f(*args, **kwargs):
-        def g(state, input):
+        def g(input):
             try:
-                return func(state, input, *args, **kwargs)
+                return func(input, *args, **kwargs)
             except ParseNoApply as err:
                 if input != err.remaining_input:
                     raise ParseBacktrackError
@@ -35,74 +35,91 @@ def parser(func):
 # parser and want it to bactrack, see 'attempt'.
 def backtrack_parser(func):
     def f(*args, **kwargs):
-        def g(state, input):
-            return func(state, input, *args, **kwargs)
+        def g(input):
+            return func(input, *args, **kwargs)
         return g
     return f
 
 # Make a 'parser behave like a 'backtrack_parser'
 def attempt(parser):
-    def g(state, input):
+    def g(input):
         try:
-            return parser(state, input)
+            return parser(input)
         except ParseBacktrackError:
             raise ParseNoApply(input)
     return g
 
-def parse_some(parser, input, state=None):
-    result, state, input = parser(state, input)
+def parse_some(parser, input):
+    result, input = parser(input)
     return result
 
-def parse_all(parser, input, state=None):
-    result, state, input = parser(state, input)
+def parse_all(parser, input):
+    result, input = parser(input)
     if input:
         raise ParseConsumeError
     return result
 
+@parser
+def rewrite(input, output, parser):
+    _, input = parser(input)
+    return output, input
+
+@parser
+def rewrite_fn(input, f, parser):
+    result, input = parser(input)
+    return f(result), input
+
 # Parser that accepts the first element, assuming it exists.
 @parser
-def accept_any(state, input):
+def accept_any(input):
     if not input:
         raise ParseNoApply(input)
 
-    return input[0], state, input[1:]
+    return input[0], input[1:]
+
+@parser
+def accept_input_condition(input, condition):
+    if not condition(input):
+        raise ParseNoApply(input)
+    
+    return result, new_input
 
 # Parser that accepts the first element if it matches a condition lambda.
 @parser
-def accept_condition(state, input, condition):
-    result, state, new_input = accept_any()(state, input)
+def accept_condition(input, condition):
+    result, new_input = accept_any()(input)
 
     if not condition(result):
         raise ParseNoApply(input)
 
     else:
-        return result, state, new_input
+        return result, new_input
 
 @parser
-def accept_specific(state, input, specific):
-    return accept_condition(lambda result: result == specific)(state, input)
+def accept_specific(input, specific):
+    return accept_condition(lambda result: result == specific)(input)
 
 @backtrack_parser
-def accept_specific_multi(state, input, specific_multi):
+def accept_specific_multi(input, specific_multi):
     results = []
     for specific in specific_multi:
-        result, state, input = accept_specific(specific)(state, input)
+        result, input = accept_specific(specific)(input)
         results.append(result)
 
-    return results, state, input
+    return results, input
 
 # Parser that accepts the first element if it is of a given type.
 @parser
-def accept_type(state, input, type):
-    return accept_condition(lambda result: isinstance(result, type))(state, input)
+def accept_type(input, type):
+    return accept_condition(lambda result: isinstance(result, type))(input)
 
 # Parser that accepts as many of input as possible.
 @parser
-def accept_many(state, input, parser):
+def accept_many(input, parser):
     results = []
     while input:
         try:
-            result, state, new_input = parser(state, input)
+            result, new_input = parser(input)
             if new_input == input:
                 raise RuntimeError('many loop')
             input = new_input
@@ -110,20 +127,20 @@ def accept_many(state, input, parser):
         except ParseNoApply:
             break
 
-    return results, state, input
+    return results, input
 
 @parser
-def accept_many1(state, input, parser):
-    result, state, input = parser(state, input)
-    results, state, input = accept_many(parser)(state, input)
+def accept_many1(input, parser):
+    result, input = parser(input)
+    results, input = accept_many(parser)(input)
     results.append(result)
-    return results, state, input
+    return results, input
 
 @parser
-def accept_choice(state, input, parser_list):
+def accept_choice(input, parser_list):
     for parser in parser_list:
         try:
-            return parser(state, input)
+            return parser(input)
         except ParseNoApply:
             pass
 
