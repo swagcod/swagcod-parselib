@@ -1,6 +1,7 @@
 This exists because I'm tired of there being no good parser combinator
 library. It implements only what I need specifically. Its made for
-(the guy who pretends to be) SwagCoD to use, not for you to use.
+(the guy who pretends to be) SwagCoD to use, not for you to use, although
+I wrote a tutorial in case you feel like converting to the church of Akatsuki.
 
 The problem with all other libraries is that either they aren't combinators,
 and are thus way overkill for small projects which don't need to be fast,
@@ -10,3 +11,68 @@ and decides that they must use monads, when the language doesn't have do-notatio
 This uses monad-flavored combinators, but no monads. There is no .bind(). Parsers
 are written as ordinary python functions, but use the @parser decorator to
 minimally change them.
+
+## Tutorial
+
+Lets look at a basic parser, that parses the world `hello`:
+
+```
+def accept_hello(input):
+  if input.startswith('hello'):
+    return 'hello', input[5:]
+  raise ParseNoApply
+```
+
+A parse is just a function that takes in `input` and returns a value and a new value of `input`
+or throws `ParseNoApply` (we use an exception as a way to get around the lack of a nice way
+of cascading `None` throughout the function).
+
+We can now use this parser like `parse_all(accept_hello, 'hello')` and get back `'hello'` as the output.
+
+Parsers should start with the word `accept` (because I said so). That example is boring since
+we didn't actually use any combinators. Lets use `@parser` now.
+
+```
+@parser
+def accept_hello(input):
+  if input.startswith('hello'):
+    return 'hello', input[5:]
+  raise ParseNoApply
+```
+
+This still sucks. Note that we now use `parse_all(accept_hello(), 'hello')`. Now you might
+wonder why we called it as a function this time. Lets rewrite this to be generic, so we
+can accept any string:
+
+```
+@parser
+def accept_string(input, string):
+  if input.startswith(string):
+    return string, input[5:]
+  raise ParseNoApply
+```
+
+The usage is now `parse_all(accept_string('hello'), 'hello')`. The `@parser` decorator
+*curries* the first argument, `input`, to the end, so that two function calls have to be
+made. `accept_string` is not a parser, but `accept_string('hello')` is, because it is
+a function that takes `input` and returns a value as well as a new value for `input`.
+
+This distinction is important so that we can combine parsers. First lets look at some
+simple parsers. We could have written our function like:
+
+```
+@parser
+def accept_hello(input):
+  _, input = accept_specific('h')(input)
+  _, input = accept_specific('e')(input)
+  _, input = accept_specific('l')(input)
+  _, input = accept_specific('l')(input)
+  _, input = accept_specific('o')(input)
+  return 'hello', input
+```
+
+Needless to say, almost all inner parsers should be called like `result, input = accept_<name>(<args>)(input)`. This is
+exposing what would normally be the parsing monad into the usage, because we don't have monads at our disposal.
+
+Suppose we want to parse a bunch of `1`s:
+  
