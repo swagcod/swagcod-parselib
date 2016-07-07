@@ -76,3 +76,15 @@ exposing what would normally be the parsing monad into the usage, because we don
 
 Suppose we want to parse a bunch of `1`s:
   
+```
+@parser
+def accept_ones(input)
+   return accept_many(accept_specific('1'))(input)
+```
+
+Yay combining. Actually, this could equivalently be written
+
+```
+accept_ones = accept_many(accept_spefific('1'))
+```
+```
